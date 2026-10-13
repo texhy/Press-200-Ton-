@@ -1,0 +1,720 @@
+{
+ "schema": "floor/1",
+ "note": "Scale SKETCH from a hand drawing, not a survey. Do not read dimensions off it.",
+ "provenance": {
+  "layout": "sketch",
+  "dimensions": "estimated"
+ },
+ "floor": {
+  "w": 46,
+  "d": 46,
+  "origin": "centre",
+  "up": "+Y",
+  "grid_m": 1
+ },
+ "aisles": [
+  {
+   "id": "main",
+   "pts": [
+    [
+     -6,
+     -17
+    ],
+    [
+     -6,
+     16
+    ],
+    [
+     6,
+     16
+    ],
+    [
+     6,
+     -17
+    ]
+   ],
+   "w": 3.4
+  }
+ ],
+ "kinds": {
+  "hydraulic_4col": {
+   "dims": {
+    "w": 2.8,
+    "h": 5.2,
+    "d": 2.4,
+    "col_r": 0.14,
+    "col_inset": 0.34
+   },
+   "ram": {
+    "travel": 1.1,
+    "plate": [
+     1.6,
+     0.22,
+     1.6
+    ],
+    "park": 0.1
+   }
+  },
+  "mechanical_cframe": {
+   "dims": {
+    "w": 2.2,
+    "h": 3.0,
+    "d": 1.8,
+    "frame_t": 0.34
+   },
+   "ram": {
+    "travel": 0.42,
+    "plate": [
+     0.9,
+     0.12,
+     0.9
+    ],
+    "park": 0.06
+   },
+   "flywheel": {
+    "r": 0.45,
+    "t": 0.14,
+    "offset": [
+     -0.9,
+     2.5,
+     0
+    ]
+   }
+  }
+ },
+ "stations": [
+  {
+   "id": "press_4",
+   "label": "Press 4",
+   "kind": "hydraulic_4col",
+   "tonnage": 630,
+   "pos": [
+    -11,
+    -10.5
+   ],
+   "sim": {
+    "phase": 0.07,
+    "spm": 11,
+    "pattern": [
+     [
+      360,
+      528,
+      "running"
+     ],
+     [
+      528,
+      546,
+      "break"
+     ],
+     [
+      546,
+      690,
+      "running"
+     ],
+     [
+      690,
+      712,
+      "fault",
+      "serious",
+      "Seal leak on the HPU"
+     ],
+     [
+      712,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "press_3",
+   "label": "Press 3",
+   "kind": "hydraulic_4col",
+   "tonnage": 500,
+   "pos": [
+    -11,
+    -3.5
+   ],
+   "sim": {
+    "phase": 0.31,
+    "spm": 13,
+    "pattern": [
+     [
+      360,
+      432,
+      "running"
+     ],
+     [
+      432,
+      468,
+      "changeover"
+     ],
+     [
+      468,
+      552,
+      "running"
+     ],
+     [
+      552,
+      570,
+      "break"
+     ],
+     [
+      570,
+      780,
+      "running"
+     ],
+     [
+      780,
+      870,
+      "idle"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "press_2",
+   "label": "Press 2",
+   "kind": "hydraulic_4col",
+   "tonnage": 400,
+   "pos": [
+    -11,
+    3.5
+   ],
+   "sim": {
+    "phase": 0.58,
+    "spm": 15,
+    "pattern": [
+     [
+      360,
+      534,
+      "running"
+     ],
+     [
+      534,
+      552,
+      "break"
+     ],
+     [
+      552,
+      720,
+      "running"
+     ],
+     [
+      720,
+      744,
+      "break"
+     ],
+     [
+      744,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "press_1",
+   "label": "Press 1",
+   "kind": "hydraulic_4col",
+   "tonnage": 400,
+   "pos": [
+    -11,
+    10.5
+   ],
+   "sim": {
+    "phase": 0.84,
+    "spm": 12,
+    "pattern": [
+     [
+      360,
+      402,
+      "idle"
+     ],
+     [
+      402,
+      558,
+      "running"
+     ],
+     [
+      558,
+      576,
+      "break"
+     ],
+     [
+      576,
+      648,
+      "running"
+     ],
+     [
+      648,
+      681,
+      "changeover"
+     ],
+     [
+      681,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_8",
+   "label": "S-Press 8",
+   "kind": "mechanical_cframe",
+   "tonnage": 110,
+   "pos": [
+    10,
+    -14
+   ],
+   "sim": {
+    "phase": 0.12,
+    "spm": 42,
+    "pattern": [
+     [
+      360,
+      540,
+      "running"
+     ],
+     [
+      540,
+      558,
+      "break"
+     ],
+     [
+      558,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_7",
+   "label": "S-Press 7",
+   "kind": "mechanical_cframe",
+   "tonnage": 110,
+   "pos": [
+    10,
+    -10
+   ],
+   "sim": {
+    "phase": 0.44,
+    "spm": 38,
+    "pattern": [
+     [
+      360,
+      498,
+      "running"
+     ],
+     [
+      498,
+      534,
+      "changeover"
+     ],
+     [
+      534,
+      564,
+      "running"
+     ],
+     [
+      564,
+      582,
+      "break"
+     ],
+     [
+      582,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_6",
+   "label": "S-Press 6",
+   "kind": "mechanical_cframe",
+   "tonnage": 160,
+   "pos": [
+    10,
+    -6
+   ],
+   "sim": {
+    "phase": 0.71,
+    "spm": 35,
+    "pattern": [
+     [
+      360,
+      546,
+      "running"
+     ],
+     [
+      546,
+      564,
+      "break"
+     ],
+     [
+      564,
+      612,
+      "running"
+     ],
+     [
+      612,
+      658,
+      "fault",
+      "critical",
+      "Tonnage overload \u2014 stopped"
+     ],
+     [
+      658,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_5",
+   "label": "S-Press 5",
+   "kind": "mechanical_cframe",
+   "tonnage": 160,
+   "pos": [
+    10,
+    -2
+   ],
+   "sim": {
+    "phase": 0.03,
+    "spm": 40,
+    "pattern": [
+     [
+      360,
+      552,
+      "running"
+     ],
+     [
+      552,
+      570,
+      "break"
+     ],
+     [
+      570,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_4",
+   "label": "S-Press 4",
+   "kind": "mechanical_cframe",
+   "tonnage": 200,
+   "pos": [
+    10,
+    2
+   ],
+   "sim": {
+    "phase": 0.26,
+    "spm": 36,
+    "pattern": [
+     [
+      360,
+      456,
+      "running"
+     ],
+     [
+      456,
+      540,
+      "idle"
+     ],
+     [
+      540,
+      558,
+      "break"
+     ],
+     [
+      558,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_3",
+   "label": "S-Press 3",
+   "kind": "mechanical_cframe",
+   "tonnage": 200,
+   "pos": [
+    10,
+    6
+   ],
+   "sim": {
+    "phase": 0.49,
+    "spm": 44,
+    "pattern": [
+     [
+      360,
+      522,
+      "running"
+     ],
+     [
+      522,
+      540,
+      "break"
+     ],
+     [
+      540,
+      738,
+      "running"
+     ],
+     [
+      738,
+      762,
+      "fault",
+      "warning",
+      "Lubrication alarm"
+     ],
+     [
+      762,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_2",
+   "label": "S-Press 2",
+   "kind": "mechanical_cframe",
+   "tonnage": 200,
+   "pos": [
+    10,
+    10
+   ],
+   "sim": {
+    "phase": 0.66,
+    "spm": 39,
+    "pattern": [
+     [
+      360,
+      564,
+      "running"
+     ],
+     [
+      564,
+      582,
+      "break"
+     ],
+     [
+      582,
+      870,
+      "running"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "s_press_1",
+   "label": "Press 200",
+   "kind": "mechanical_cframe",
+   "tonnage": 200,
+   "pos": [
+    10,
+    14
+   ],
+   "instrumented": true,
+   "operator_post": {
+    "pts": [
+     [
+      8.2,
+      15.6
+     ],
+     [
+      10.2,
+      15.6
+     ]
+    ]
+   },
+   "routes": {
+    "primary": "/live",
+    "camera": "/camera",
+    "timeline": "/timeline"
+   }
+  }
+ ],
+ "room": {
+  "id": "maint",
+  "label": "Maintenance Room",
+  "pos": [
+   0,
+   19.5
+  ],
+  "dims": {
+   "w": 8.5,
+   "h": 3.2,
+   "d": 5
+  },
+  "door": [
+   0,
+   11
+  ],
+  "routes": {
+   "primary": "/downtime"
+  }
+ },
+ "paths": [
+  {
+   "id": "aisle_main",
+   "pts": [
+    [
+     -5.5,
+     -16
+    ],
+    [
+     -5.5,
+     15
+    ],
+    [
+     5.5,
+     15
+    ],
+    [
+     5.5,
+     -16
+    ]
+   ],
+   "closed": true,
+   "speed_mps": 1.25,
+   "trust": "simulated"
+  },
+  {
+   "id": "aisle_cross",
+   "pts": [
+    [
+     -6,
+     0
+    ],
+    [
+     6,
+     0
+    ]
+   ],
+   "closed": false,
+   "speed_mps": 1.1,
+   "trust": "simulated"
+  },
+  {
+   "id": "fk_route",
+   "pts": [
+    [
+     0,
+     19
+    ],
+    [
+     0,
+     15
+    ],
+    [
+     6,
+     15
+    ],
+    [
+     6,
+     14.4
+    ],
+    [
+     8,
+     14.4
+    ]
+   ],
+   "closed": false,
+   "speed_mps": 2.2,
+   "trust": "inferred"
+  }
+ ],
+ "ambient": {
+  "walkers": [
+   {
+    "id": "amb_1",
+    "path": "aisle_main",
+    "phase": 0.05
+   },
+   {
+    "id": "amb_2",
+    "path": "aisle_main",
+    "phase": 0.33
+   },
+   {
+    "id": "amb_3",
+    "path": "aisle_main",
+    "phase": 0.61
+   },
+   {
+    "id": "amb_4",
+    "path": "aisle_main",
+    "phase": 0.88
+   },
+   {
+    "id": "amb_5",
+    "path": "aisle_cross",
+    "phase": 0.2
+   },
+   {
+    "id": "amb_6",
+    "path": "aisle_cross",
+    "phase": 0.7
+   }
+  ],
+  "forklift_patrol": {
+   "id": "fk_patrol",
+   "path": "aisle_main",
+   "phase": 0.45
+  }
+ },
+ "views": [
+  {
+   "id": "overview",
+   "pos": [
+    25,
+    27,
+    29
+   ],
+   "target": [
+    -1,
+    1.5,
+    1
+   ],
+   "zoom": 21
+  },
+  {
+   "id": "s_press_1",
+   "pos": [
+    20,
+    11,
+    25
+   ],
+   "target": [
+    10,
+    1.6,
+    14
+   ],
+   "zoom": 44
+  },
+  {
+   "id": "hydraulic",
+   "pos": [
+    -25,
+    16,
+    16
+   ],
+   "target": [
+    -11,
+    2.0,
+    0
+   ],
+   "zoom": 34
+  }
+ ]
+}

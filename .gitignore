@@ -1,0 +1,36 @@
+# ---- dependencies & build output -------------------------------------------
+web/node_modules/
+web/.next/
+web/out/
+node_modules/
+
+# ---- python ----------------------------------------------------------------
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# ---- pipeline intermediates -------------------------------------------------
+# out/ holds the RAW CV output and run logs. The only things the web app needs
+# are the generated files in web/public/data/, and those ARE committed, so a
+# fresh clone runs without any of this. p200_full.json (65 MB) is published as
+# a release asset instead — see docs/DATA.md.
+out/
+
+# ---- the recording ----------------------------------------------------------
+# 241 MB, over GitHub's 100 MB per-file hard limit. Release asset; fetch it
+# with ./scripts/fetch-assets.sh
+web/public/videos/*.mp4
+
+# ---- os / editor ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# redundant: the same tree is committed unzipped alongside it
+Press_work-main.zip
+
+# typescript incremental build cache
+*.tsbuildinfo

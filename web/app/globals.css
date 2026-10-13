@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+/* ===========================================================================
+   PRESS 200 — TOKEN LAYER
+   Dark-first. Every colour below was run through the dataviz palette
+   validator against THESE surfaces, not the defaults:
+     dark  on #121619 -> ALL PASS (worst adjacent CVD dE 8.4, normal 19.3)
+     light on #fbfcfd -> ALL PASS (+ documented contrast WARN on slots 3/4/5)
+   Do not hand-edit a series hex without re-running the validator.
+   =========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* -- surfaces & chrome ------------------------------------------------- */
+  --plane:        #0a0c0f;
+  --surface:      #121619;
+  --raised:       #171c21;
+  --ink:          #ffffff;   /* 18.2:1 */
+  --ink-2:        #c3c2b7;   /* 10.2:1 */
+  --muted:        #8b949e;   /*  5.9:1 — cool, beats the warm default 5.1 */
+  --grid:         #1e242a;
+  --axis:         #2b333b;
+  --hair:         rgba(255, 255, 255, 0.09);
+  --hair-strong:  rgba(255, 255, 255, 0.16);
+
+  /* -- categorical series: fixed slot order, entity-locked, never cycled -- */
+  --s1: #3987e5;  /* blue    — production / actual     */
+  --s2: #d95926;  /* orange  — idle burn / changeover  */
+  --s3: #199e70;  /* aqua    — material / sheets       */
+  --s4: #c98500;  /* yellow  — feed jam                */
+  --s5: #d55181;  /* magenta — lubrication / air       */
+  --s6: #008300;  /* green   — operator present        */
+  --s7: #9085e9;  /* violet  — die try-out             */
+  --s8: #e66767;  /* red     — breakdown               */
+
+  /* -- status: RESERVED. never a 9th series. always + icon + label ------- */
+  --good:     #0ca30c;  /* 5.42:1 on surface */
+  --warning:  #fab219;  /* 9.91:1 */
+  --serious:  #ec835a;  /* 6.90:1 */
+  --critical: #d03b3b;  /* 3.79:1 */
+
+  /* -- sequential (one hue, light->dark). ordinal floor = 600 on dark ---- */
+  --q100: #cde2fb; --q200: #9ec5f4; --q300: #6da7ec; --q400: #3987e5;
+  --q500: #256abf; --q600: #184f95; --q700: #0d366b;
+
+  /* -- diverging: blue <-> red, NEUTRAL GRAY midpoint (never a hue) ------ */
+  --dv-neg: #3987e5; --dv-mid: #383835; --dv-pos: #e66767;
+
+  /* -- de-emphasis (the "emphasis" form: one accent, rest grey) ---------- */
+  --dim: #4a5560;
+
+  /* -- the unfilled part of a meter / progress bar ----------------------- */
+  /* Meters used --q700 for this. On dark that reads as a subtle navy, which
+     is how it survived; on light #0d366b is near-black, so a meter at 0% —
+     Quality, which has no source at all — rendered as a solid dark bar and
+     read as 100%. A track is chrome, so it wears a chrome tone, never a step
+     of the data ramp. */
+  --track: #222a31;
+
+  /* -- space / radius / elevation ---------------------------------------- */
+  --sp-1: 2px;  --sp-2: 4px;  --sp-3: 8px;  --sp-4: 12px;
+  --sp-5: 16px; --sp-6: 24px; --sp-7: 32px; --sp-8: 48px; --sp-9: 64px;
+  --r-ctl: 4px; --r-card: 8px; --r-over: 12px;
+  --shadow-over: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  /* -- motion ------------------------------------------------------------ */
+  --t-fast: 120ms; --t-base: 200ms; --t-slow: 320ms; --t-tell: 480ms;
+  --e-out:  cubic-bezier(0.2, 0, 0, 1);
+  --e-in:   cubic-bezier(0.4, 0, 1, 1);
+  --e-move: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* -- layout ------------------------------------------------------------ */
+  --topbar-h: 64px; --spine-h: 56px; --rail-w: 72px; --rail-w-open: 212px;
+}
+
+/* --- light mode: the toggle must win in BOTH directions -----------------
+   Both copies below must stay byte-identical: one serves the OS preference,
+   the other the explicit toggle, and a value that drifts between them shows
+   up only on one of the two paths. */
+@media (prefers-color-scheme: light) {
+  :root:where(:not([data-theme="dark"])) {
+    color-scheme: light;
+    --plane: #f6f7f9; --surface: #fbfcfd; --raised: #ffffff;
+    --ink: #0b0d0f; --ink-2: #52514e; --muted: #6b7280;
+    --grid: #e6e8eb; --axis: #c9ced4;
+    --hair: rgba(11, 13, 15, 0.10); --hair-strong: rgba(11, 13, 15, 0.18);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+    --dv-neg: #2a78d6; --dv-mid: #f0efec; --dv-pos: #e34948;
+    --dim: #aab2bb;
+    --track: #e7ebef;
+
+    /* STATUS, re-stepped for a light surface. The dark values are tuned against
+       #121619 and collapse on #fbfcfd — measured: warning 1.79:1 (invisible as
+       text), serious 2.57:1 (fails even the 3:1 mark floor), good 3.27:1. These
+       hold the same hues at >= 4.5:1, so status can be text as well as a mark. */
+    --good:     #117a11;  /* 5.36:1 on #fbfcfd */
+    --warning:  #8a6100;  /* 5.39:1 */
+    --serious:  #b8541d;  /* 4.73:1 */
+    --critical: #c42f2f;  /* 5.39:1 */
+
+    /* SEQUENTIAL, re-stepped for a light surface. The dark ramp's LOW end is its
+       bright one; on white q100 sits at 1.29:1 and the quiet cells of a heatmap
+       vanish into the card. Same direction, anchored near the surface instead:
+       low values stay quiet without disappearing. Monotonic in lightness. */
+    --q100: #eaf1fb; --q200: #cfe0f6; --q300: #a8c6ee; --q400: #7aa5e0;
+    --q500: #4a81cf; --q600: #2c5da6; --q700: #17407a;
+
+    --shadow-over: 0 8px 24px rgba(11, 13, 15, 0.14);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --plane: #f6f7f9; --surface: #fbfcfd; --raised: #ffffff;
+  --ink: #0b0d0f; --ink-2: #52514e; --muted: #6b7280;
+  --grid: #e6e8eb; --axis: #c9ced4;
+  --hair: rgba(11, 13, 15, 0.10); --hair-strong: rgba(11, 13, 15, 0.18);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --dv-neg: #2a78d6; --dv-mid: #f0efec; --dv-pos: #e34948;
+  --dim: #aab2bb;
+  --track: #e7ebef;
+
+  /* STATUS, re-stepped for a light surface. The dark values are tuned against
+     #121619 and collapse on #fbfcfd — measured: warning 1.79:1 (invisible as
+     text), serious 2.57:1 (fails even the 3:1 mark floor), good 3.27:1. These
+     hold the same hues at >= 4.5:1, so status can be text as well as a mark. */
+  --good:     #117a11;  /* 5.36:1 on #fbfcfd */
+  --warning:  #8a6100;  /* 5.39:1 */
+  --serious:  #b8541d;  /* 4.73:1 */
+  --critical: #c42f2f;  /* 5.39:1 */
+
+  /* SEQUENTIAL, re-stepped for a light surface. The dark ramp's LOW end is its
+     bright one; on white q100 sits at 1.29:1 and the quiet cells of a heatmap
+     vanish into the card. Same direction, anchored near the surface instead:
+     low values stay quiet without disappearing. Monotonic in lightness. */
+  --q100: #eaf1fb; --q200: #cfe0f6; --q300: #a8c6ee; --q400: #7aa5e0;
+  --q500: #4a81cf; --q600: #2c5da6; --q700: #17407a;
+
+  --shadow-over: 0 8px 24px rgba(11, 13, 15, 0.14);
+}
+
+/* --- tailwind theme bridge ---------------------------------------------- */
+@theme inline {
+  --color-plane: var(--plane);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-grid: var(--grid);
+  --color-axis: var(--axis);
+  --color-s1: var(--s1); --color-s2: var(--s2); --color-s3: var(--s3);
+  --color-s4: var(--s4); --color-s5: var(--s5); --color-s6: var(--s6);
+  --color-s7: var(--s7); --color-s8: var(--s8);
+  --color-good: var(--good); --color-warning: var(--warning);
+  --color-serious: var(--serious); --color-critical: var(--critical);
+  --color-dim: var(--dim);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+}
+
+/* --- base --------------------------------------------------------------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--plane);
+  color: var(--ink);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+::selection { background: color-mix(in oklab, var(--s1) 36%, transparent); }
+
+/* Instrument readouts: mono + tabular so digits never reflow as they change.
+   Large standalone values keep PROPORTIONAL figures (tabular looks loose). */
+.readout { font-family: var(--font-mono-face), ui-monospace, monospace;
+           font-variant-numeric: tabular-nums; font-weight: 500; }
+.tnum    { font-variant-numeric: tabular-nums; }
+.hero    { font-size: 56px; font-weight: 650; letter-spacing: -1.5px; line-height: 1; }
+
+.hair    { border: 1px solid var(--hair); }
+.card    { background: var(--surface); border: 1px solid var(--hair);
+           border-radius: var(--r-card); }
+.over    { background: var(--raised); border: 1px solid var(--hair);
+           border-radius: var(--r-over); box-shadow: var(--shadow-over); }
+
+/* focus is always visible — keyboard reaches every hover affordance */
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 2px; }
+
+/* scrollbars, quietly */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--axis); border-radius: 999px;
+  border: 3px solid transparent; background-clip: content-box; }
+
+/* --- the one piece of ambient motion in the whole app ------------------- */
+@keyframes breathe { 0%, 100% { opacity: 0.5 } 50% { opacity: 1 } }
+.breathing { animation: breathe 2.4s ease-in-out infinite; }
+
+/* an alarm pulses ONCE on arrival, then holds still. never loops. */
+@keyframes arrive {
+  0%   { transform: translateX(12px); opacity: 0 }
+  100% { transform: translateX(0);    opacity: 1 }
+}
+.arrive { animation: arrive var(--t-base) var(--e-out) both; }
+
+/* --- reduced motion: decorative off, functional kept -------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .breathing { animation: none; opacity: 1; }
+}
+
+/* --- the assistant -------------------------------------------------------
+   Motion that says where the panel came from (the button) and nothing more.
+   Both animations are suppressed under reduced motion: a panel that springs
+   is decoration, and decoration is the first thing to go. */
+@keyframes assistantIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes turnIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.assistant-panel { animation: assistantIn var(--t-base) var(--e-out) both; transform-origin: 100% 100%; }
+.assistant-turn  { animation: turnIn var(--t-base) var(--e-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-panel, .assistant-turn { animation: none; }
+}
