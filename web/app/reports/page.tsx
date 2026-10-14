@@ -1,184 +1,189 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Shell } from "@/components/shell/Shell";
-import { Card, StatTile, StatusPill, TableView, TrustChip, Reveal } from "@/components/ui";
-import { Heatmap, Empty } from "@/components/charts";
-import { loadDay, loadHistory, useAsync } from "@/lib/data";
-import { useCursor, hhmmss, mLabel } from "@/lib/cursor";
-import { CAUSE_COLOR, CAUSE_LABEL } from "@/lib/palette";
-import { mins, n0, n1, pkr, partLabel, pct } from "@/lib/format";
-import type { Cause } from "@/lib/types";
+import { Card } from "@/components/ui";
+import { loadCv, loadDay, loadHistory, useAsync } from "@/lib/data";
+import { detectFindings, measuredWindow } from "@/lib/findings";
+import { loadFloor } from "@/lib/floor";
+import { Dropdown } from "@/components/planner/Dropdown";
+import { ReportDoc, type ReportScope } from "@/components/reports/ReportDoc";
+import { partLabel } from "@/lib/format";
 
-function csv(rows: (string | number)[][]) {
-  return rows.map((r) => r.map((c) => {
-    const s = String(c);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  }).join(",")).join("\n");
-}
+/** REPORTS.
+ *
+ *  This screen used to print the minute-by-minute PLC log — 510 rows of mode,
+ *  motor, amps and torque. That is the right artefact when an engineer disputes
+ *  a number and the wrong one for everybody else, which is most of the people a
+ *  report gets handed to.
+ *
+ *  So: filters, then a sheet of paper. The preview IS the output — same A4
+ *  geometry, same white, same type — and printing it is the download, which is
+ *  why it needs no PDF library and cannot drift from what was on screen. */
+
+const PRINT_CSS = `
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  #report-paper, #report-paper * { visibility: visible !important; }
+  #report-paper {
+    position: absolute !important; left: 0; top: 0;
+    margin: 0 !important; box-shadow: none !important;
+    width: 210mm !important;
+  }
+  #report-paper section, #report-paper table { break-inside: avoid; }
+}`;
+
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const pretty = (s: string) =>
+  new Date(`${s}T00:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+
+type RangeKey = "measured" | "last7" | "last30" | "custom";
 
 export default function ReportsPage() {
   const { data: day } = useAsync(loadDay);
   const { data: hist } = useAsync(loadHistory);
-  const { setT, openInspector } = useCursor();
-  const [q, setQ] = useState("");
-  const [onlyEvents, setOnlyEvents] = useState(false);
+  const { data: floor } = useAsync(loadFloor);
+  const { data: cv } = useAsync(loadCv);
 
-  /* hour x 10-min grid of strokes — magnitude on a grid is a heatmap,
-     sequential, ONE hue. Null cells render as "no coverage", not zero. */
-  const heat = useMemo(() => {
-    if (!day) return null;
-    const h0 = Math.floor(day.shift.m0 / 60), h1 = Math.ceil(day.shift.m1 / 60);
-    const rows = Array.from({ length: h1 - h0 }, (_, i) => `${String(h0 + i).padStart(2, "0")}:00`);
-    const cols = Array.from({ length: 6 }, (_, i) => `:${String(i * 10).padStart(2, "0")}`);
-    const vals = rows.map((_, ri) => cols.map((_, ci) => {
-      const m0 = (h0 + ri) * 60 + ci * 10;
-      const slice = day.minutes.filter((m) => m.m >= m0 && m.m < m0 + 10);
-      if (!slice.length) return null;
-      return slice.reduce((a, m) => a + m.s, 0);
-    }));
-    return { rows, cols, vals };
-  }, [day]);
+  const presses = floor?.stations ?? [];
+  const instrumented = presses.find((p) => p.instrumented) ?? presses[presses.length - 1];
 
-  const log = useMemo(() => {
-    if (!day) return [];
-    const ql = q.trim().toLowerCase();
-    return day.minutes
-      .filter((m) => m.m >= day.shift.m0 && m.m < day.shift.m1)
-      .filter((m) => !onlyEvents || m.bits.length > 0 || m.fault > 0 || m.s === 0)
-      .filter((m) => !ql || [mLabel(m.m), m.st, m.mode, m.part ?? "", ...m.bits]
-        .join(" ").toLowerCase().includes(ql));
-  }, [day, q, onlyEvents]);
+  const [pressId, setPressId] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeKey>("measured");
+  const [onDate, setOnDate] = useState<string | null>(null);
+  const [operator, setOperator] = useState<string>("all");
 
-  const download = (name: string, text: string) => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
-    a.download = name; a.click(); URL.revokeObjectURL(a.href);
+  const rowsAll = hist?.rows ?? [];
+  const dates = rowsAll.map((r) => r.date);
+  const latest = dates[dates.length - 1];
+
+  const press = presses.find((p) => p.id === pressId) ?? instrumented;
+  const theDate = onDate ?? latest;
+
+  const rows = useMemo(() => {
+    if (!rowsAll.length) return [];
+    // a press with nothing fitted has no measurements to report
+    if (press && !press.instrumented) return [];
+    let out = rowsAll;
+    if (range === "custom") out = out.filter((r) => r.date === theDate);
+    else out = out.slice(range === "last7" ? -7 : -30);
+    if (operator !== "all") out = out.filter((r) => r.operator === operator);
+    return out;
+  }, [rowsAll, range, theDate, operator, press]);
+
+  const operators = useMemo(
+    () => [...new Set(rowsAll.map((r) => r.operator))].sort(), [rowsAll]);
+
+  /** camera-only losses, shown only when the recorded day is inside the range
+   *  and the selected press is the instrumented one — the footage covers one
+   *  window on one machine, and implying otherwise would be a lie */
+  const camDate = day?.date;
+  const camInRange = !!camDate && rows.some((r) => r.date === camDate);
+  /** the recorded window — the only part of this app that is not simulated */
+  const measured = useMemo(
+    () => (range === "measured" && press?.instrumented ? measuredWindow(cv, day ?? null) : null),
+    [range, press, cv, day]);
+
+  const findings = useMemo(
+    () => ((measured || camInRange) && press?.instrumented ? detectFindings(cv, day ?? null) : []),
+    [measured, camInRange, press, cv, day],
+  );
+
+  /** the window the findings were measured from */
+  const watchedMin = day ? day.camera.end_min - day.camera.start_min : 0;
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const camWindow = day ? `${hhmm(day.camera.start_min)}\u2013${hhmm(day.camera.end_min)}` : "";
+
+  const scope: ReportScope = {
+    pressLabel: press?.label ?? "Press 200",
+    pressTonnage: press?.tonnage ?? 200,
+    instrumented: !!press?.instrumented,
+    from: rows[0]?.date ?? theDate ?? "",
+    to: rows[rows.length - 1]?.date ?? theDate ?? "",
+    operator,
+    rows,
   };
 
-  if (!day) return <Shell day={null}><Card title="Loading…" /></Shell>;
+  if (!hist || !floor) return <Shell day={day ?? null}><Card title="Loading…" /></Shell>;
 
   return (
-    <Shell day={day} wide>
-      <Card edge="warning" className="mb-3">
-        <p className="m-0 text-[11px] text-[var(--ink-2)] leading-relaxed">{day.note}</p>
-        <p className="m-0 mt-1.5 text-[11px] text-[var(--muted)]">{hist?.note}</p>
-      </Card>
+    <Shell day={day ?? null} wide>
+      <style>{PRINT_CSS}</style>
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))" }}>
-        <Card><StatTile source="camera" sourceNote="the monitor\u2019s own stroke counter inside the camera window; PLC spine outside it" label="Strokes" value={n0(day.totals.strokes)} /></Card>
-        <Card><StatTile source="camera" sourceNote="min(IN, OUT) per press window \u2014 a cross-check, never the count" label="Parts (camera est.)" value={n0(day.totals.parts_est)}
-                        sub={`min(IN,OUT) over ${day.camera.end_min - day.camera.start_min} covered min`} /></Card>
-        <Card><StatTile source="calc" sourceNote="A from PLC run minutes, P from camera strokes vs takt, Q has no source" label="OEE" value={pct(day.oee.oee, 1)} sub="A × P only" /></Card>
-        <Card><StatTile source="calc" label="Downtime" value={mins(day.totals.downtime_min)} /></Card>
-        <Card><StatTile source="vfd" label="Energy" value={n1(day.totals.kwh)} unit="kWh" /></Card>
-        <Card><StatTile source="calc" sourceNote="drive energy x tariff" label="Cost" value={pkr(day.totals.pkr)} /></Card>
+      <header className="mt-7 mb-5 print:hidden">
+        <h1 className="m-0 text-[30px] font-[680] leading-[1.1] tracking-[-0.02em]">
+          Reports
+        </h1>
+        <p className="m-0 mt-1.5 text-[13px] text-[var(--muted)]">
+          Pick a machine and a period. What you see below is the printed page.
+        </p>
+      </header>
+
+      {/* ---------------- filters ---------------- */}
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
+        <Dropdown label="MACHINE" width={210} value={press?.id ?? ""}
+                  onChange={setPressId}
+                  options={presses.map((p) => ({
+                    value: p.id,
+                    label: p.label,
+                    hint: `${p.tonnage} T`,
+                    badge: p.instrumented ? "live" : undefined,
+                  }))} />
+
+        <Dropdown label="PERIOD" width={190} value={range}
+                  onChange={(v) => setRange(v as RangeKey)}
+                  options={[
+                    { value: "measured", label: "Recorded window", hint: "measured" },
+                    { value: "last7", label: "Last 7 days", hint: "simulated" },
+                    { value: "last30", label: "Last 30 days", hint: "simulated" },
+                    { value: "custom", label: "A single day", hint: "simulated" },
+                  ]} />
+
+        {range === "custom" && (
+          <Dropdown label="DATE" width={210} value={theDate ?? ""}
+                    onChange={setOnDate}
+                    options={[...dates].reverse().map((d) => ({ value: d, label: pretty(d) }))} />
+        )}
+
+        <Dropdown label="OPERATOR" width={190} value={operator}
+                  onChange={setOperator}
+                  options={[{ value: "all", label: "All operators" },
+                            ...operators.map((o) => ({ value: o, label: o }))]} />
+
+        <button
+          onClick={() => window.print()}
+          disabled={!rows.length && !measured}
+          className="ml-auto h-[38px] px-4 rounded-[10px] text-[13px] font-[620]
+                     disabled:opacity-40 transition-colors flex items-center gap-2"
+          style={{ background: "var(--s1)", color: "#fff" }}>
+          <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden>
+            <path d="M7 1v8M3.6 6.1L7 9.5l3.4-3.4M1.6 12.4h10.8" fill="none"
+                  stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Download PDF
+        </button>
       </div>
 
-      <Card title="Hour by hour" className="mt-3"
-            sub="Strokes per 10 minutes · dashed cells are outside the shift, not zero">
-        {heat ? <Heatmap rows={heat.rows} cols={heat.cols} values={heat.vals} fmt={(v) => `${v}`} />
-              : <Empty msg="no data" />}
-      </Card>
+      <p className="m-0 mt-2.5 text-[11.5px] text-[var(--muted)] print:hidden">
+        {rows.length
+          ? <>Showing <strong className="text-[var(--ink-2)]">{rows.length}</strong>{" "}
+              {rows.length === 1 ? "day" : "days"}
+              {operator !== "all" && <> for <strong className="text-[var(--ink-2)]">{operator}</strong></>}.
+              {" "}Download opens your browser&apos;s print dialog — choose
+              <strong className="text-[var(--ink-2)]"> Save as PDF</strong>.</>
+          : press && !press.instrumented
+            ? <>{press.label} has no camera, PLC tap or drive link fitted — there is nothing measured to report.</>
+            : <>No days match these filters.</>}
+      </p>
 
-      {/* ---------------- the audit trail ---------------- */}
-      <Card title="Day log — every minute" className="mt-3" pad={false}
-            sub="When someone disputes a number, you show them the signal"
-            right={
-              <span className="flex items-center gap-2">
-                <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="search…"
-                       className="h-[24px] px-2 w-[140px] rounded-[var(--r-ctl)] text-[11px] bg-[var(--plane)]
-                                  border border-[var(--hair-strong)] outline-none" />
-                <label className="flex items-center gap-1 text-[10px] cursor-pointer">
-                  <input type="checkbox" checked={onlyEvents} onChange={(e) => setOnlyEvents(e.target.checked)}
-                         className="accent-[var(--s1)]" />
-                  events only
-                </label>
-                <button onClick={() => download(`press200_${day.date}_minutes.csv`, csv([
-                  ["minute", "clock", "status", "mode", "motor", "strokes", "kw", "amps", "torque", "hz", "pf", "dcbus", "fault", "bits", "present", "part", "trust"],
-                  ...log.map((m) => [m.m, mLabel(m.m), m.st, m.mode, m.motor, m.s, m.kw, m.amps, m.torque, m.hz, m.pf, m.dcbus, m.fault, m.bits.join("|"), m.present ?? "", m.part ?? "", m.trust]),
-                ]))} className="h-[24px] px-2 rounded-[var(--r-ctl)] text-[10px] border border-[var(--hair-strong)] hover:bg-[var(--raised)]">
-                  ↓ CSV
-                </button>
-              </span>
-            }>
-        <div className="px-4 pb-4 max-h-[420px] overflow-y-auto">
-          <TableView
-            cols={["Clock", "Status", "Mode", "Motor", "Strokes", "kW", "A", "Torque", "Bits", "Operator", "Part", "Source"]}
-            rows={log.map((m) => [
-              <span key="t" className="readout">{mLabel(m.m)}</span>,
-              m.st, m.mode,
-              m.motor ? "run" : <span key="x" className="text-[var(--muted)]">stop</span>,
-              m.s || <span key="z" className="text-[var(--muted)]">0</span>,
-              m.kw ? m.kw.toFixed(1) : "—", m.amps ? m.amps.toFixed(1) : "—",
-              m.torque ? `${m.torque.toFixed(0)}%` : "—",
-              m.bits.length
-                ? <span key="b" style={{ color: "var(--serious)" }}>{m.bits.join(", ")}</span>
-                : <span key="b" className="text-[var(--muted)]">—</span>,
-              m.present === null
-                ? <span key="p" className="text-[var(--muted)]">no coverage</span>
-                : `${m.present}%`,
-              partLabel(m.part),
-              <TrustChip key="tr" trust={m.trust} />,
-            ])}
-            caption={`${log.length} minutes shown. Every value carries its source.`}
-          />
-        </div>
-      </Card>
-
-      <div className="grid gap-3 mt-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
-        <Card title="Stoppage log" sub="Classified, with the evidence behind each one">
-          <TableView
-            cols={["Start", "Dur", "Cause", "Conf.", ""]}
-            rows={day.gaps.map((g) => [
-              <span key="t" className="readout">{hhmmss(g.t0).slice(0, 5)}</span>,
-              mins(g.cost.minutes),
-              <span key="c" className="flex items-center gap-1.5">
-                <i className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: CAUSE_COLOR[g.cause] }} />
-                {CAUSE_LABEL[g.cause]}
-              </span>,
-              g.confidence,
-              <button key="b" onClick={() => { setT(g.t0 + 1); openInspector(g.id); }}
-                      className="text-[10px] text-[var(--s1)]">why ▸</button>,
-            ])}
-          />
-        </Card>
-
-        <Card title="Alarm log" sub="Every bit transition, in order">
-          {day.alarms.length ? (
-            <TableView
-              cols={["Clock", "Severity", "Tag", "Detail", "Source"]}
-              rows={day.alarms.map((a) => [
-                <span key="t" className="readout">{hhmmss(a.t).slice(0, 5)}</span>,
-                <StatusPill key="s" severity={a.severity}>{a.severity}</StatusPill>,
-                a.tag, a.detail, a.src.toUpperCase(),
-              ])}
-            />
-          ) : <p className="m-0 text-[11px] text-[var(--muted)]">No alarms today.</p>}
-        </Card>
+      {/* ---------------- the sheet ---------------- */}
+      <div className="mt-5 pb-8 overflow-x-auto">
+        <ReportDoc scope={scope} day={day ?? null} measured={measured}
+                   findings={findings} camDate={camDate}
+                   watchedMin={watchedMin} camWindow={camWindow} />
       </div>
-
-      <Card title="30-day history" className="mt-3"
-            right={
-              <button onClick={() => hist && download("press200_history.csv", csv([
-                ["date", "part", "operator", "target", "produced", "strokes", "oee", "downtime_min", "kwh", "pkr", "top_cause"],
-                ...hist.rows.map((r) => [r.date, r.part, r.operator, r.target, r.produced, r.strokes, r.oee, r.downtime_min, r.kwh, r.pkr, r.top_cause]),
-              ]))} className="h-[24px] px-2 rounded-[var(--r-ctl)] text-[10px] border border-[var(--hair-strong)] hover:bg-[var(--raised)]">
-                ↓ CSV
-              </button>
-            }>
-        {hist ? (
-          <TableView
-            cols={["Date", "Part", "Operator", "Target", "Made", "Strokes", "OEE", "Downtime", "kWh", "Cost", "Top cause", "Source"]}
-            rows={[...hist.rows].reverse().map((r) => [
-              r.date, partLabel(r.part), r.operator, n0(r.target), n0(r.produced), n0(r.strokes),
-              `${r.oee}%`, mins(r.downtime_min),
-              n1(r.kwh), pkr(r.pkr),
-              CAUSE_LABEL[r.top_cause as Cause] ?? r.top_cause,
-              <TrustChip key="t" trust="simulated" />,
-            ])}
-          />
-        ) : <Empty msg="no history" />}
-      </Card>
     </Shell>
   );
 }
