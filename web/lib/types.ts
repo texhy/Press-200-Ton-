@@ -177,7 +177,15 @@ export interface CvTimeline {
   stroke_stats: StrokeStats;
   /** slide motion during the die change that the stroke counter did not count */
   setup_jogs: { t: number; down_ms: number; up_ms: number; dwell_ms: number; why: string }[];
-  die_changes: Record<string, unknown>[];
+  /** the monitor's own die-change episodes, in video seconds */
+  die_changes: ({ start_s: number; end_s: number } & Record<string, unknown>)[];
+  /** sheet crossings of the die line. 5 Hz frames miss most of these, so the
+   *  event list — not frames[].ev — is the only complete record of them. */
+  events: {
+    frame: number; time_s: number; event: "IN" | "OUT";
+    window: number; worker_tid: number;
+    provisional: boolean; n_sheet: number; toward: number;
+  }[];
   frames: CvFrame[];
 }
 

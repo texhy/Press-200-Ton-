@@ -17,15 +17,17 @@ import { CAUSE_COLOR, CAUSE_LABEL } from "@/lib/palette";
 const MEASURED_SPM = 5.36;
 
 /** A labelled figure inside the job card, with its channel attached. */
-function JobStat({ label, value, sub, src }: {
+function JobStat({ label, value, sub, src, tone }: {
   label: string; value: string; sub?: string; src: "camera" | "plc" | "vfd" | "calc" | "plan";
+  tone?: string;
 }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
       <dt className="m-0 text-[11px] text-[var(--muted)] flex items-center gap-1.5">
         {label}<Source from={src} />
       </dt>
-      <dd className="m-0 text-[19px] font-[620] leading-none tnum truncate">{value}</dd>
+      <dd className="m-0 text-[19px] font-[620] leading-none tnum truncate"
+          style={tone ? { color: tone } : undefined}>{value}</dd>
       {sub && <dd className="m-0 text-[10px] text-[var(--muted)]">{sub}</dd>}
     </div>
   );
@@ -136,10 +138,20 @@ export default function LivePage() {
             <dl className="grid grid-cols-2 gap-x-3 gap-y-2 m-0">
               <JobStat label="Parts made so far" value={n0(strokesSoFar)}
                        sub={`of ${n0(target)}`} src="camera" />
-              <JobStat label="Sheets in / out"
-                       value={L.covered ? `${L.sheetIn} / ${L.sheetOut}`
-                                        : `${day.totals.sheet_in} / ${day.totals.sheet_out}`}
-                       sub={L.covered ? "live, this part" : "shift total"} src="camera" />
+              {/* Direction of the latest sheet crossing, not a running total:
+                  what the operator is doing right now reads faster than a pair
+                  of counters that only ever climb. */}
+              <JobStat label="Sheet"
+                       value={!L.covered ? "—"
+                              : L.sheetFlag ? (L.sheetFlag.dir === "IN" ? "SHEET IN" : "SHEET OUT")
+                              : "—"}
+                       tone={L.covered && L.sheetFlag
+                               ? (L.sheetFlag.dir === "IN" ? "var(--s3)" : "var(--warning)")
+                               : undefined}
+                       sub={!L.covered ? "outside camera window"
+                            : L.sheetFlag ? `${L.sheetFlag.agoS}s ago`
+                            : "no sheet event yet"}
+                       src="camera" />
             </dl>
 
             {upNext && (

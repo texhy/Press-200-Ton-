@@ -65,7 +65,7 @@ export default function TimelinePage() {
     <Shell day={day} wide>
       <div className="grid gap-3" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(290px,340px)" }}>
         <div className="flex flex-col gap-3 min-w-0">
-          <Card title="The day, on ten lanes"
+          <Card title="The day, on six lanes"
                 sub="Click to seek · scroll to zoom · drag to pan · ←→ step · j/k event to event"
                 right={
                   <span className="flex gap-1">

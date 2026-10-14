@@ -1,10 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Shell } from "@/components/shell/Shell";
-import { GapCard } from "@/components/shell/Inspector";
 import { Card, Source, StatTile, StatusPill, TableView, TrustChip } from "@/components/ui";
 import { SmallMultiples, Empty } from "@/components/charts";
-import { loadDay, loadHistory, useAsync } from "@/lib/data";
+import { loadCv, loadDay, loadHistory, useAsync } from "@/lib/data";
+import { operatorAbsenceGaps, absenceInsideOtherGaps } from "@/lib/absence";
 import { useCursor, hhmmss } from "@/lib/cursor";
 import { CAUSE_COLOR, CAUSE_LABEL } from "@/lib/palette";
 import { mins, n0, pkr } from "@/lib/format";
@@ -13,25 +13,39 @@ import type { Cause } from "@/lib/types";
 export default function DowntimePage() {
   const { data: day } = useAsync(loadDay);
   const { data: hist } = useAsync(loadHistory);
+  const { data: cv } = useAsync(loadCv);
   const { setT, openInspector, hovered } = useCursor();
-  const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Cause | null>(null);
 
+  /** Operator absence is measured from the vision pass rather than handed over
+   *  by the PLC, so it is derived here and merged in. Only the stretches that
+   *  no other gap already covers are added — see lib/absence.ts. */
+  const absence = useMemo(() => operatorAbsenceGaps(cv, day), [cv, day]);
+  const absenceInside = useMemo(() => absenceInsideOtherGaps(cv, day), [cv, day]);
+
+  const gaps = useMemo(
+    () => [...(day?.gaps ?? []), ...absence].sort((a, b) => a.t0 - b.t0),
+    [day, absence],
+  );
+
+  /** The header total has to include the absence this screen just added, or it
+   *  disagrees with the rows underneath it. */
+  const downtimeMin = (day?.totals.downtime_min ?? 0)
+    + absence.reduce((s, g) => s + g.cost.minutes, 0);
+
   const byCause = useMemo(() => {
-    if (!day) return [];
     const m = new Map<Cause, { minutes: number; n: number; pkr: number; strokes: number }>();
     // scheduled breaks are PLANNED downtime — context, not loss
-    for (const g of day.gaps.filter((x) => x.cause !== "break")) {
+    for (const g of gaps.filter((x) => x.cause !== "break")) {
       const e = m.get(g.cause) ?? { minutes: 0, n: 0, pkr: 0, strokes: 0 };
       e.minutes += g.cost.minutes; e.n += 1; e.pkr += g.cost.pkr; e.strokes += g.cost.strokes;
       m.set(g.cause, e);
     }
     return [...m.entries()].sort((a, b) => b[1].minutes - a[1].minutes);
-  }, [day]);
+  }, [gaps]);
 
 
-  const unexplained = (day?.gaps ?? []).filter((g) => g.cause === "unexplained" && !confirmed.has(g.id));
-  const rows = (day?.gaps ?? [])
+  const rows = gaps
     .filter((g) => g.cause !== "break")
     .filter((g) => !filter || g.cause === filter);
 
@@ -51,32 +65,12 @@ export default function DowntimePage() {
   return (
     <Shell day={day}>
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))" }}>
-        <Card><StatTile source="calc" sourceNote="gaps classified by the reason engine from PLC state + camera cadence" label="Downtime today" value={mins(day.totals.downtime_min)} /></Card>
-        <Card><StatTile source="calc" label="Stops classified" value={n0(day.gaps.filter((g) => g.cause !== "break").length)}
+        <Card><StatTile source="calc" sourceNote="gaps classified by the reason engine from PLC state + camera cadence, plus operator absence measured by the camera" label="Downtime today" value={mins(downtimeMin)} /></Card>
+        <Card><StatTile source="calc" label="Stops classified" value={n0(gaps.filter((g) => g.cause !== "break").length)}
                         sub={`+ ${mins(day.totals.break_min)} scheduled break`} /></Card>
-        <Card edge={unexplained.length ? "critical" : undefined}>
-          <StatTile source="calc" sourceNote="no PLC bit, no VFD fault and no camera evidence accounts for these" label="Unexplained" value={n0(unexplained.length)}
-                    tone={unexplained.length ? "var(--critical)" : undefined}
-                    sub={unexplained.length ? "needs a human" : "all accounted for"} />
-        </Card>
         <Card><StatTile source={["vfd", "plc"]} sourceNote="drive power during motor-on minutes with no strokes" label="Idle burn" value={pkr(day.totals.idle_pkr)} tone="var(--s2)"
                         sub={`${mins(day.totals.idle_min)} motor on, no output`} /></Card>
       </div>
-
-      {/* ---------- triage first: the only thing needing a decision ---------- */}
-      {unexplained.length > 0 && (
-        <Card title="Triage queue" sub="Nothing explains these — escalate or reclassify"
-              edge="critical" className="mt-3">
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))" }}>
-            {unexplained.map((g) => (
-              <div key={g.id} className="p-3 rounded-[var(--r-ctl)]" style={{ border: "1px solid var(--hair)" }}>
-                <GapCard gap={g} day={day}
-                         onConfirm={(id) => setConfirmed((s) => new Set(s).add(id))} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* ONE card, not two. "Where the time went" drew a bar per cause and
           "Cost of each cause" listed the same causes in the same order with
@@ -84,15 +78,14 @@ export default function DowntimePage() {
           rows by hue. A bar and its numbers belong on the same line. */}
       <Card title="Where the time went" className="mt-3"
             sub="every cause today, worst first · click a row to filter the log below"
-            right={<Source from="calc" note="minutes attributed by the reason engine, costed at the measured cadence and tariff" />}>
+            right={<Source from="calc" note="minutes attributed by the reason engine; operator absence measured by the camera" />}>
         <div className="flex flex-col">
           <div className="grid gap-2 pb-1.5 text-[10px] text-[var(--muted)] uppercase tracking-wide"
-               style={{ gridTemplateColumns: "160px 1fr 50px 66px 84px 70px",
+               style={{ gridTemplateColumns: "160px 1fr 50px 66px 84px",
                         borderBottom: "1px solid var(--hair)" }}>
             <span>Cause</span><span /><span className="text-right">Times</span>
             <span className="text-right">Minutes</span>
             <span className="text-right">Strokes lost</span>
-            <span className="text-right">Idle cost</span>
           </div>
           {byCause.map(([c, v]) => {
             const on = filter === c;
@@ -101,7 +94,7 @@ export default function DowntimePage() {
               <button key={c} onClick={() => setFilter(on ? null : c)}
                       className="grid gap-2 items-center py-2 text-[12px] text-left rounded-[var(--r-ctl)]
                                  transition-colors hover:bg-[var(--raised)]"
-                      style={{ gridTemplateColumns: "160px 1fr 50px 66px 84px 70px",
+                      style={{ gridTemplateColumns: "160px 1fr 50px 66px 84px",
                                borderBottom: "1px solid var(--hair)",
                                background: on ? "var(--raised)" : undefined }}>
                 <span className="flex items-center gap-2 min-w-0">
@@ -117,9 +110,6 @@ export default function DowntimePage() {
                 <span className="text-right tnum text-[var(--muted)]">{v.n}x</span>
                 <span className="text-right tnum font-[600]">{mins(v.minutes)}</span>
                 <span className="text-right tnum">{n0(v.strokes)}</span>
-                <span className="text-right tnum" style={{ color: v.pkr > 0 ? "var(--s2)" : "var(--muted)" }}>
-                  {pkr(v.pkr)}
-                </span>
               </button>
             );
           })}
@@ -128,6 +118,11 @@ export default function DowntimePage() {
         <p className="m-0 mt-2 text-[10px] text-[var(--muted)]">
           Cause colours are entity-locked — the same hue here, on the timeline and on the spine.
           Scheduled breaks are excluded: planned downtime, not loss.
+          {absence.length > 0 && <>
+            {" "}Operator absent is read off the camera frame by frame, not from a PLC bit.
+            {absenceInside > 0 && ` A further ${mins(absenceInside)} of absence falls inside
+              other stops and is counted there, not twice.`}
+          </>}
         </p>
       </Card>
 

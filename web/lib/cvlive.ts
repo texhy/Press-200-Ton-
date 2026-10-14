@@ -32,13 +32,34 @@ export interface CvLive {
   part: string | null;
   /** seconds since the last counted stroke — 0 while stroking */
   sinceStroke: number;
+  /** the most recent sheet crossing at or before the playhead, or null before
+   *  the first one. Direction, not a running total. */
+  sheetFlag: { dir: "IN" | "OUT"; at: number; agoS: number } | null;
 }
 
 const EMPTY: CvLive = {
   frame: null, covered: false, videoT: 0, vy: [], strokes: 0,
   sheetIn: 0, sheetOut: 0, pressState: 0, dieChanging: false, forklift: false,
-  operator: null, part: null, sinceStroke: 0,
+  operator: null, part: null, sinceStroke: 0, sheetFlag: null,
 };
+
+/** The last sheet crossing at or before `vt`.
+ *
+ *  Binary search over cv.events, which is already in time order. The counters
+ *  on frames[] only say HOW MANY have crossed; the direction of the latest one
+ *  is only in the event list. */
+function lastSheetEvent(cv: CvTimeline, vt: number): CvLive["sheetFlag"] {
+  const ev = cv.events;
+  if (!ev?.length || vt < ev[0].time_s) return null;
+  let lo = 0, hi = ev.length - 1, hit = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (ev[mid].time_s <= vt) { hit = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  if (hit < 0) return null;
+  const e = ev[hit];
+  return { dir: e.event, at: e.time_s, agoS: Math.max(0, Math.round(vt - e.time_s)) };
+}
 
 /** Binary search for the last frame at or before `vt`. */
 function findIdx(frames: CvFrame[], vt: number): number {
@@ -90,6 +111,7 @@ export function useCvLive(cv: CvTimeline | null, day: Day | null, t: number): Cv
       operator: f.w ? { tid: f.w[0], confirmed: f.cf === 1, sim: f.w[6] / 100 } : null,
       part: f.d.length ? f.d[0][0] : null,
       sinceStroke: Math.round(sinceStroke * 10) / 10,
+      sheetFlag: lastSheetEvent(cv, videoT),
     };
     last.current = out;
     return out;

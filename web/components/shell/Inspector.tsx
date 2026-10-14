@@ -3,7 +3,7 @@ import type { Day, Gap, EvidenceStep } from "@/lib/types";
 import { CAUSE_COLOR, CAUSE_LABEL, STATUS_COLOR } from "@/lib/palette";
 import { useCursor, hhmmss } from "@/lib/cursor";
 import { StatusPill, TrustChip } from "@/components/ui";
-import { mins, pkr, secs } from "@/lib/format";
+import { mins } from "@/lib/format";
 
 const SRC_LABEL = { plc: "PLC", vfd: "VFD", cv: "CAMERA", plan: "PLAN" } as const;
 const KIND_TONE: Record<EvidenceStep["kind"], string> = {
@@ -96,9 +96,10 @@ export function GapCard({ gap, day, onSeek, onConfirm }: {
         </div>
       )}
 
+      {/* Only the measured duration is shown. Strokes/parts "lost" and idle cost
+          were counterfactuals against the PLANNED takt, not observations. */}
       <dl className="grid grid-cols-4 gap-2 m-0">
-        {[["Minutes", mins(gap.cost.minutes)], ["Strokes lost", gap.cost.strokes.toLocaleString("en-US")],
-          ["Parts lost", gap.cost.parts.toLocaleString("en-US")], ["Idle cost", pkr(gap.cost.pkr)]].map(([k, v]) => (
+        {[["Minutes", mins(gap.cost.minutes)]].map(([k, v]) => (
           <div key={k as string} className="flex flex-col">
             <dt className="text-[10px] text-[var(--muted)] m-0">{k}</dt>
             <dd className="text-[14px] readout m-0">{v}</dd>

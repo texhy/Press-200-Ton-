@@ -160,19 +160,18 @@ export default function ReportsPage() {
       <Card title="30-day history" className="mt-3"
             right={
               <button onClick={() => hist && download("press200_history.csv", csv([
-                ["date", "part", "operator", "target", "produced", "strokes", "oee", "downtime_min", "unexplained_min", "kwh", "pkr", "top_cause"],
-                ...hist.rows.map((r) => [r.date, r.part, r.operator, r.target, r.produced, r.strokes, r.oee, r.downtime_min, r.unexplained_min, r.kwh, r.pkr, r.top_cause]),
+                ["date", "part", "operator", "target", "produced", "strokes", "oee", "downtime_min", "kwh", "pkr", "top_cause"],
+                ...hist.rows.map((r) => [r.date, r.part, r.operator, r.target, r.produced, r.strokes, r.oee, r.downtime_min, r.kwh, r.pkr, r.top_cause]),
               ]))} className="h-[24px] px-2 rounded-[var(--r-ctl)] text-[10px] border border-[var(--hair-strong)] hover:bg-[var(--raised)]">
                 ↓ CSV
               </button>
             }>
         {hist ? (
           <TableView
-            cols={["Date", "Part", "Operator", "Target", "Made", "Strokes", "OEE", "Downtime", "Unexpl.", "kWh", "Cost", "Top cause", "Source"]}
+            cols={["Date", "Part", "Operator", "Target", "Made", "Strokes", "OEE", "Downtime", "kWh", "Cost", "Top cause", "Source"]}
             rows={[...hist.rows].reverse().map((r) => [
               r.date, partLabel(r.part), r.operator, n0(r.target), n0(r.produced), n0(r.strokes),
               `${r.oee}%`, mins(r.downtime_min),
-              r.unexplained_min ? <span key="u" style={{ color: "var(--critical)" }}>{mins(r.unexplained_min)}</span> : "—",
               n1(r.kwh), pkr(r.pkr),
               CAUSE_LABEL[r.top_cause as Cause] ?? r.top_cause,
               <TrustChip key="t" trust="simulated" />,

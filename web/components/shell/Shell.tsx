@@ -22,7 +22,7 @@ const NAV = [
     { href: "/camera",   label: "Camera",   icon: "▣" },
   ]},
   { group: "Analyze", items: [
-    { href: "/downtime", label: "Downtime", icon: "◭", badge: "unexplained" },
+    { href: "/downtime", label: "Downtime", icon: "◭" },
     { href: "/energy",   label: "Energy",   icon: "⌁" },
     { href: "/health",   label: "Health",   icon: "♡", badge: "zone" },
   ]},
@@ -325,10 +325,7 @@ export function Shell({ day, children, wide }: {
 
   const badges = useMemo((): Record<string, number> => {
     if (!day) return {};
-    return {
-      unexplained: day.gaps.filter((g) => g.cause === "unexplained" && !g.confirmed).length,
-      zone: 0,
-    };
+    return { zone: 0 };
   }, [day]);
 
   return (

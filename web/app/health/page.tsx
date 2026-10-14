@@ -69,14 +69,14 @@ export default function HealthPage() {
             right={<TrustChip trust="simulated" />}>
         <div className="px-4 pb-4 flex flex-col">
           <div className="grid gap-2 py-2 text-[10px] font-[700] tracking-[0.06em] text-[var(--muted)]"
-               style={{ gridTemplateColumns: "1.6fr 70px 70px 34px 1.3fr 90px 100px", borderBottom: "1px solid var(--hair)" }}>
-            <span>INDICATOR</span><span className="text-right">NOW</span><span className="text-right">EWMA</span>
+               style={{ gridTemplateColumns: "1.6fr 70px 92px 34px 1.3fr 90px 100px", borderBottom: "1px solid var(--hair)" }}>
+            <span>INDICATOR</span><span className="text-right">NOW</span><span className="text-right">BEFORE AVG.</span>
             <span>ZONE</span><span>A / B / C / D</span><span className="text-right">30-DAY</span>
             <span className="text-right">TO NEXT ZONE</span>
           </div>
           {rows.map((r) => (
             <div key={r.key} className="grid gap-2 py-2.5 items-center text-[12px]"
-                 style={{ gridTemplateColumns: "1.6fr 70px 70px 34px 1.3fr 90px 100px", borderBottom: "1px solid var(--hair)" }}>
+                 style={{ gridTemplateColumns: "1.6fr 70px 92px 34px 1.3fr 90px 100px", borderBottom: "1px solid var(--hair)" }}>
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 min-w-0">
                   <span className="truncate">{r.label}</span>

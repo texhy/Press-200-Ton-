@@ -27,9 +27,66 @@ async function get<T>(url: string): Promise<T> {
   return p;
 }
 
+/** Causes that are not shown.
+ *
+ *  `unexplained` was a gap the reason engine could not attribute; `micro_stop`
+ *  was its other fallback — the label it reached for when no alarm bit and no
+ *  camera evidence said anything. Neither names a thing anyone can act on, so
+ *  both are dropped here, at the single point every screen loads the day
+ *  through. That way the breakdown, the stop table, the REASONS lane, the nav
+ *  badge and the floor status agree without each one filtering for itself.
+ *
+ *  `totals.downtime_min` is PRECOMPUTED in the JSON, so it has to be corrected
+ *  too — otherwise the header reads 34 min while the visible causes sum to 26,
+ *  and the two disagree on screen. */
+const HIDDEN_CAUSES = new Set(["unexplained", "micro_stop"]);
+
+function dropHiddenCauses(day: Day): Day {
+  const dropped = day.gaps.filter((g) => HIDDEN_CAUSES.has(g.cause));
+  if (!dropped.length) return day;
+  const droppedMin = dropped.reduce((a, g) => a + g.cost.minutes, 0);
+  return {
+    ...day,
+    gaps: day.gaps.filter((g) => !HIDDEN_CAUSES.has(g.cause)),
+    totals: {
+      ...day.totals,
+      downtime_min: Math.max(0, Math.round((day.totals.downtime_min - droppedMin) * 10) / 10),
+      unexplained_min: 0,
+    },
+  };
+}
+
 /** Small files every screen needs. */
-export const loadDay = () => get<Day>("/data/day.json");
-export const loadHistory = () => get<History>("/data/history.json");
+export const loadDay = () => get<Day>("/data/day.json").then(dropHiddenCauses);
+/** Condition indicators that are not shown, and one that is renamed.
+ *
+ *  `cycle_cv` and `dwell` were dropped: both describe operator pace rather than
+ *  machine condition, which is a different conversation from the one this
+ *  screen is having.
+ *
+ *  `up_stroke` is relabelled. "Up-stroke time" is the precise name for it — the
+ *  milliseconds the slide takes to rise — but it reads as jargon. What it means
+ *  in practice is that the cycle is getting slower, so it is presented that way.
+ *  The note underneath still says what is physically being measured. */
+const HIDDEN_INDICATORS = new Set(["cycle_cv", "dwell"]);
+
+const RELABELLED: Record<string, { label: string; note: string }> = {
+  up_stroke: {
+    label: "Takt time variation",
+    note: "The cycle is slowing — the brake is dragging on the return. Camera-measured at 40 ms.",
+  },
+};
+
+function tidyIndicators(h: History): History {
+  return {
+    ...h,
+    health: h.health
+      .filter((r) => !HIDDEN_INDICATORS.has(r.key))
+      .map((r) => (RELABELLED[r.key] ? { ...r, ...RELABELLED[r.key] } : r)),
+  };
+}
+
+export const loadHistory = () => get<History>("/data/history.json").then(tidyIndicators);
 export const loadPlan = () => get<Plan>("/data/plan.json");
 /** The per-frame CV file is MBs — only the camera and timeline screens pull it. */
 export const loadCv = () => get<CvTimeline>("/data/cv.json");
